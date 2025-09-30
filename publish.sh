@@ -109,10 +109,21 @@ fi
 # 增加版本号
 if [ "$DRY_RUN" = false ]; then
   echo "${YELLOW}增加 $VERSION_BUMP 版本号...${NC}"
-  cnpm version $VERSION_BUMP --no-git-tag-version
-  # 获取新版本号
+  CURRENT_VERSION=$(node -p "require('./package.json').version")
+  echo "当前版本号: $CURRENT_VERSION"
+  
+  # 使用 npm 代替 cnpm 来更新版本号
+  npm version $VERSION_BUMP --no-git-tag-version
+  
+  # 再次获取版本号以确认更新成功
   NEW_VERSION=$(node -p "require('./package.json').version")
   echo "新版本号: $NEW_VERSION"
+  
+  # 检查版本号是否确实被更新
+  if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+    echo "${RED}警告: 版本号似乎没有被更新${NC}"
+    echo "${YELLOW}请手动检查 package.json 文件${NC}"
+  fi
   
   # Git提交和推送 - 自动处理所有修改和未跟踪文件
   echo "${YELLOW}Git 提交和推送...${NC}"
@@ -122,6 +133,16 @@ if [ "$DRY_RUN" = false ]; then
   
   # 创建并推送标签
   GIT_TAG="llm-core-v$NEW_VERSION"
+  echo "${YELLOW}创建并推送标签: $GIT_TAG${NC}"
+  
+  # 检查标签是否已存在，如果存在则先删除
+  if git rev-parse -q --verify "refs/tags/$GIT_TAG" >/dev/null; then
+    echo "${YELLOW}标签已存在，删除旧标签...${NC}"
+    git tag -d $GIT_TAG
+    git push origin :refs/tags/$GIT_TAG
+  fi
+  
+  # 创建新标签并推送
   git tag $GIT_TAG
   git push origin $GIT_TAG
 else

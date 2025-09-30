@@ -11,7 +11,11 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "publish:prepare": "echo \"Preparing to publish llm-core module...\" && cd ../ && mkdir -p .github/workflows && cp llm-core/.github/workflows/npm-publish.yml .github/workflows/"
+    "publish:patch": "./publish.sh --patch",
+    "publish:minor": "./publish.sh --minor",
+    "publish:major": "./publish.sh --major",
+    "publish:dry": "./publish.sh --dry-run",
+    "publish:beta": "./publish.sh --tag beta"
   },
   "dependencies": {},
   "peerDependencies": {

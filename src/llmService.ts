@@ -1,5 +1,5 @@
-import { getChapterMindMapPrompt, getMindMapArrowPrompt } from './mindmap';
 import { getPromptByName, formatPrompt } from './prompts';
+import { getChapterMindMapPrompt, getMindMapArrowPrompt } from './mindmap';
 
 export enum ServiceProvider {
   DEEPSEEK = 'deepseek',
@@ -80,6 +80,16 @@ export const registerServiceProvider = (provider: ServiceProvider, implementatio
 export const setGeminiApiKey = (key: string): void => {
   if (key) {
     localStorage.setItem('GEMINI_API_KEY', key)
+    
+    // 更新 Gemini API 密钥
+    try {
+      // 动态导入以避免循环依赖
+      import('./geminiService').then(({ updateApiKey }) => {
+        updateApiKey(key)
+      })
+    } catch (e) {
+      console.error('Failed to update Gemini API key:', e)
+    }
   } else {
     localStorage.removeItem('GEMINI_API_KEY')
   }
@@ -98,8 +108,48 @@ export async function* streamDefinition(
     if (implementation) {
       yield* implementation.streamDefinition(topic, language, category, context);
     } else {
-      const prefix = language === 'zh' ? '错误: ' : 'Error: ';
-      yield `${prefix}未找到 ${provider} 的实现`;
+      // 回退到动态导入方式
+      switch (provider) {
+        case ServiceProvider.DEEPSEEK:
+          if (hasDeepSeekApiKey()) {
+            const { streamDefinition } = await import('./deepseekService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        case ServiceProvider.OPENAI:
+          if (hasOpenAiApiKey()) {
+            const { streamDefinition } = await import('./openaiService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        case ServiceProvider.GEMINI:
+          if (hasGeminiApiKey()) {
+            const { streamDefinition } = await import('./geminiService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        case ServiceProvider.GROQ:
+          if (hasGroqApiKey()) {
+            const { streamDefinition } = await import('./groqService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        case ServiceProvider.YOUCHAT:
+          if (hasYouChatApiKey()) {
+            const { streamDefinition } = await import('./youChatService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        case ServiceProvider.XUNFEI:
+          if (hasFreeApiKey()) {
+            const { streamDefinition } = await import('./xunfeiService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
+        default:
+          const { streamDefinition } = await import('./xunfeiService')
+          yield* streamDefinition(topic, language, category, context)
+      }
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
@@ -136,16 +186,20 @@ export const generatePrompt = (
 ): string => {
   let promptTemplate: string | undefined;
   
+  // 首先检查是否有用户手动选择的模板类型
   const selectedTemplate = localStorage.getItem('SELECTED_PROMPT_TEMPLATE');
   
   if (selectedTemplate) {
+    // 如果有用户选择的模板，优先使用
     promptTemplate = getPromptByName(selectedTemplate, language);
     
+    // 特殊处理wiki模板，当category为空时使用简化版本
     if (selectedTemplate === 'wiki' && !category && language === 'zh') {
       promptTemplate = '请用中文为"{topic}"提供一个简洁、百科全书式的定义。请提供信息丰富且中立的内容。不要使用markdown、标题或任何特殊格式。只返回定义本身的文本。';
     }
   }
   
+  // 如果没有用户选择的模板或者找不到该模板，则按原来的逻辑选择模板
   if (!promptTemplate) {
     if (language === 'zh') {
       if (context) {
@@ -166,7 +220,9 @@ export const generatePrompt = (
     }
   }
   
+  // 如果找不到模板，使用默认实现
   if (!promptTemplate) {
+    // 保留原来的默认实现作为后备
     if (language === 'zh') {
       if (context) {
         return `${topic}\n\n${context}`;
@@ -186,6 +242,7 @@ export const generatePrompt = (
     }
   }
   
+  // 替换提示模板中的变量
   const replacements: Record<string, string> = { topic };
   if (category) replacements.category = category;
   if (context) replacements.context = context;
@@ -264,16 +321,18 @@ export const hasApiKey = (): boolean => {
   )
 }
 
+// 思维导图生成函数
 export async function* streamMindMap(
   content: string,
   language: 'zh' | 'en' = 'zh'
 ): AsyncGenerator<string, void, undefined> {
-  const provider = getSelectedServiceProvider()
   const prompt = getChapterMindMapPrompt()
   
   try {
+    // 将内容和思维导图提示结合
     const fullPrompt = `${content}\n\n${prompt}`
     
+    // 使用streamDefinition函数来生成思维导图，但更改category以区分
     yield* streamDefinition(fullPrompt, language, 'mindmap')
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
@@ -282,16 +341,18 @@ export async function* streamMindMap(
   }
 }
 
+// 思维导图箭头生成函数
 export async function* streamMindMapArrows(
   mindMapData: string,
   language: 'zh' | 'en' = 'zh'
 ): AsyncGenerator<string, void, undefined> {
-  const provider = getSelectedServiceProvider()
   const prompt = getMindMapArrowPrompt()
   
   try {
+    // 将思维导图数据和箭头提示结合
     const fullPrompt = `${mindMapData}\n\n${prompt}`
     
+    // 使用streamDefinition函数来生成箭头，但更改category以区分
     yield* streamDefinition(fullPrompt, language, 'mindmap_arrows')
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'

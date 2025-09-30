@@ -112,18 +112,28 @@ if [ "$DRY_RUN" = false ]; then
   CURRENT_VERSION=$(node -p "require('./package.json').version")
   echo "当前版本号: $CURRENT_VERSION"
   
-  # 使用 npm 代替 cnpm 来更新版本号
-  npm version $VERSION_BUMP --no-git-tag-version
+  # 手动更新版本号，避免使用 npm version 命令
+  IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+  case $VERSION_BUMP in
+    major)
+      major=$((major + 1))
+      minor=0
+      patch=0
+      ;;
+    minor)
+      minor=$((minor + 1))
+      patch=0
+      ;;
+    patch)
+      patch=$((patch + 1))
+      ;;
+  esac
+  NEW_VERSION="$major.$minor.$patch"
   
-  # 再次获取版本号以确认更新成功
-  NEW_VERSION=$(node -p "require('./package.json').version")
+  # 使用 sed 命令更新 package.json 中的版本号
+  sed -i '' "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" package.json
+  
   echo "新版本号: $NEW_VERSION"
-  
-  # 检查版本号是否确实被更新
-  if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
-    echo "${RED}警告: 版本号似乎没有被更新${NC}"
-    echo "${YELLOW}请手动检查 package.json 文件${NC}"
-  fi
   
   # Git提交和推送 - 自动处理所有修改和未跟踪文件
   echo "${YELLOW}Git 提交和推送...${NC}"

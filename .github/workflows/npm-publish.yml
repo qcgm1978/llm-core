@@ -11,24 +11,39 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./llm-core
+        working-directory: .
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
           registry-url: 'https://registry.npmjs.org'
+      
       - name: Cache node modules
         uses: actions/cache@v3
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
+      
       - name: Install dependencies
         run: npm install
+      
       - name: Build package
         run: npm run build
+      
+      - name: Verify build
+        run: |
+          if [ ! -d "dist" ] || [ -z "$(ls -A dist)" ]; then
+            echo "Build failed: dist directory is empty"
+            exit 1
+          fi
+      
       - name: Publish to npm
         run: npm publish
         env:

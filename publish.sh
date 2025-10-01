@@ -85,16 +85,6 @@ if [ ! -f "package.json" ]; then
   exit 1
 fi
 
-# 清理并安装依赖
-  # 清理并安装依赖
-  if [ "$DRY_RUN" = false ]; then
-    echo "${YELLOW}清理 node_modules 并安装依赖...${NC}"
-    rm -rf node_modules
-    cnpm install --registry=https://registry.npmmirror.com --userconfig=$PWD/.npmrc
-  else
-    echo "${YELLOW}[模拟] 清理 node_modules 并安装依赖...${NC}"
-  fi
-
 # 构建项目
 if [ "$DRY_RUN" = false ]; then
   echo "${YELLOW}构建项目...${NC}"
@@ -136,9 +126,9 @@ if [ "$DRY_RUN" = false ]; then
   
   echo "新版本号: $NEW_VERSION"
   
-  # Git提交和推送 - 自动处理所有修改和未跟踪文件
+  # Git提交和推送 - 只添加必要的文件
   echo "${YELLOW}Git 提交和推送...${NC}"
-  git add .
+  git add package.json
   git commit -m "Bump version to $NEW_VERSION"
   git push origin HEAD
   

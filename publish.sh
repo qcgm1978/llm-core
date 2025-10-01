@@ -86,13 +86,14 @@ if [ ! -f "package.json" ]; then
 fi
 
 # 清理并安装依赖
-if [ "$DRY_RUN" = false ]; then
-  echo "${YELLOW}清理 node_modules 并安装依赖...${NC}"
-  rm -rf node_modules
-  cnpm install
-else
-  echo "${YELLOW}[模拟] 清理 node_modules 并安装依赖...${NC}"
-fi
+  # 清理并安装依赖
+  if [ "$DRY_RUN" = false ]; then
+    echo "${YELLOW}清理 node_modules 并安装依赖...${NC}"
+    rm -rf node_modules
+    cnpm install --registry=https://registry.npmmirror.com --userconfig=$PWD/.npmrc
+  else
+    echo "${YELLOW}[模拟] 清理 node_modules 并安装依赖...${NC}"
+  fi
 
 # 构建项目
 if [ "$DRY_RUN" = false ]; then

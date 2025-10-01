@@ -1,3 +1,4 @@
+// 添加缺少的导入语句
 import { getPromptByName, formatPrompt } from './prompts';
 import { getChapterMindMapPrompt, getMindMapArrowPrompt } from './mindmap';
 
@@ -7,7 +8,8 @@ export enum ServiceProvider {
   XUNFEI = 'xunfei',
   YOUCHAT = 'youchat',
   GROQ = 'groq',
-  OPENAI = 'openai'
+  OPENAI = 'openai',
+  DOUBAO = 'doubao'
 }
 
 export const getSelectedServiceProvider = (): ServiceProvider => {
@@ -29,6 +31,8 @@ export const getSelectedServiceProvider = (): ServiceProvider => {
     return ServiceProvider.GROQ
   } else if (hasYouChatApiKey()) {
     return ServiceProvider.YOUCHAT
+  } else if (hasDoubaoApiKey()) {
+    return ServiceProvider.DOUBAO
   } else {
     return ServiceProvider.XUNFEI
   }
@@ -70,7 +74,8 @@ export const serviceProvidersRegistry: Record<ServiceProvider, ServiceProviderIm
   [ServiceProvider.XUNFEI]: null,
   [ServiceProvider.YOUCHAT]: null,
   [ServiceProvider.GROQ]: null,
-  [ServiceProvider.OPENAI]: null
+  [ServiceProvider.OPENAI]: null,
+  [ServiceProvider.DOUBAO]: null
 };
 
 export const registerServiceProvider = (provider: ServiceProvider, implementation: ServiceProviderImplementation) => {
@@ -146,6 +151,12 @@ export async function* streamDefinition(
             yield* streamDefinition(topic, language, category, context)
             break
           }
+        case ServiceProvider.DOUBAO:
+          if (hasDoubaoApiKey()) {
+            const { streamDefinition } = await import('./doubaoService')
+            yield* streamDefinition(topic, language, category, context)
+            break
+          }
         default:
           const { streamDefinition } = await import('./xunfeiService')
           yield* streamDefinition(topic, language, category, context)
@@ -175,7 +186,8 @@ export const clearAllApiKeys = (): void => {
   localStorage.removeItem('DEEPSEEK_API_KEY')
   localStorage.removeItem('GEMINI_API_KEY')
   localStorage.removeItem('GROQ_API_KEY')
-  localStorage.removeItem('OPENAI_API_KEY') 
+  localStorage.removeItem('OPENAI_API_KEY')
+  localStorage.removeItem('DOUBAO_API_KEY')
 }
 
 export const generatePrompt = (
@@ -317,7 +329,8 @@ export const hasApiKey = (): boolean => {
     hasGroqApiKey() ||
     hasYouChatApiKey() ||
     hasFreeApiKey() ||
-    hasOpenAiApiKey()
+    hasOpenAiApiKey() ||
+    hasDoubaoApiKey()
   )
 }
 
@@ -358,5 +371,20 @@ export async function* streamMindMapArrows(
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     const prefix = language === 'zh' ? '生成思维导图箭头时发生错误: ' : 'Error generating mind map arrows: '
     yield `${prefix}${errorMessage}`
+  }
+}
+
+// 添加 hasDoubaoApiKey 函数
+export const hasDoubaoApiKey = (): boolean => {
+  const key = localStorage.getItem('DOUBAO_API_KEY')
+  return !!key && key.trim().length > 0
+}
+
+// 添加 setDoubaoApiKey 函数
+export const setDoubaoApiKey = (key: string): void => {
+  if (key) {
+    localStorage.setItem('DOUBAO_API_KEY', key)
+  } else {
+    localStorage.removeItem('DOUBAO_API_KEY')
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@qcgm1978/llm-core",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Core functionality for LLM service provider",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,9 +18,9 @@
     "core:publish:beta": "./publish.sh --tag beta"
   },
   "dependencies": {
-    "@google/genai": "^1.7.0",
+    "@google/genai": "^1.21.0",
     "query-string": "^9.3.1",
-    "sse.js": "^2.7.1",
+    "sse.js": "^2.7.2",
     "uuid": "^13.0.0"
   },
   "peerDependencies": {

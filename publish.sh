@@ -128,7 +128,7 @@ if [ "$DRY_RUN" = false ]; then
   
   # Git提交和推送 - 只添加必要的文件
   echo "${YELLOW}Git 提交和推送...${NC}"
-  git add package.json
+  git add -u
   git commit -m "Bump version to $NEW_VERSION"
   git push origin HEAD
   

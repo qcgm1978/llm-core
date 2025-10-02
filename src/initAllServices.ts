@@ -1,4 +1,5 @@
-import { ServiceProvider, registerServiceProvider } from './index';
+// 将第一行修改为直接从llmService导入，而不是从index导入
+import { ServiceProvider, registerServiceProvider } from './llmService';
 
 export async function initAllServices(): Promise<void> {
   try {

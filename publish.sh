@@ -124,7 +124,6 @@ if [ "$DRY_RUN" = false ]; then
   # 使用 sed 命令更新 package.json 中的版本号
   sed -i '' "s/\"version\": \"$CURRENT_VERSION\"/\"version\": \"$NEW_VERSION\"/" package.json
   
-  echo "新版本号: $NEW_VERSION"
   
   # Git提交和推送 - 只添加必要的文件
   echo "${YELLOW}Git 提交和推送...${NC}"
@@ -159,3 +158,4 @@ echo "${GREEN}版本管理完成！${NC}"
 echo "${YELLOW}GitHub Actions将自动处理发布过程${NC}"
 
 echo "${GREEN}llm-core 模块发布准备已完成${NC}"
+echo "新版本号: $NEW_VERSION"

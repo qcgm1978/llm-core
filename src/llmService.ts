@@ -100,6 +100,16 @@ export const setGeminiApiKey = (key: string): void => {
   }
 };
 
+// 添加清理文本的辅助函数
+function cleanContent(content: string): string {
+  // 删除连续的#字符
+  let cleaned = content.replace(/#{2,}/g, '')
+  // 删除连续的*字符
+  cleaned = cleaned.replace(/\*{2,}/g, '')
+  return cleaned
+}
+
+// 修改streamDefinition函数，使用辅助函数处理所有返回的数据
 export async function* streamDefinition(
   topic: string,
   language: 'zh' | 'en' = 'zh',
@@ -110,57 +120,63 @@ export async function* streamDefinition(
   const implementation = serviceProvidersRegistry[provider];
   
   try {
+    let implementationStream: AsyncGenerator<string, void, undefined>;
+    
     if (implementation) {
-      yield* implementation.streamDefinition(topic, language, category, context);
+      implementationStream = implementation.streamDefinition(topic, language, category, context);
     } else {
-      // 回退到动态导入方式
       switch (provider) {
         case ServiceProvider.DEEPSEEK:
           if (hasDeepSeekApiKey()) {
             const { streamDefinition } = await import('./deepseekService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.OPENAI:
           if (hasOpenAiApiKey()) {
             const { streamDefinition } = await import('./openaiService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.GEMINI:
           if (hasGeminiApiKey()) {
             const { streamDefinition } = await import('./geminiService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.GROQ:
           if (hasGroqApiKey()) {
             const { streamDefinition } = await import('./groqService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.YOUCHAT:
           if (hasYouChatApiKey()) {
             const { streamDefinition } = await import('./youChatService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.XUNFEI:
           if (hasFreeApiKey()) {
             const { streamDefinition } = await import('./xunfeiService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         case ServiceProvider.DOUBAO:
           if (hasDoubaoApiKey()) {
             const { streamDefinition } = await import('./doubaoService')
-            yield* streamDefinition(topic, language, category, context)
+            implementationStream = streamDefinition(topic, language, category, context)
             break
           }
         default:
           const { streamDefinition } = await import('./xunfeiService')
-          yield* streamDefinition(topic, language, category, context)
+          implementationStream = streamDefinition(topic, language, category, context)
       }
+    }
+    
+    // 遍历实现的流，应用清理函数
+    for await (const chunk of implementationStream) {
+      yield cleanContent(chunk)
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'

@@ -1,11 +1,3 @@
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { readFile } from 'fs/promises';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
 export interface Prompt {
   act: string
   prompt: string
@@ -108,46 +100,48 @@ export const resetPrompts = (): void => {
   prompts = JSON.parse(JSON.stringify(defaultPrompts))
 }
 
-export const loadOpenAIPrompts = async (shouldLoad: boolean = false): Promise<boolean> => {
-  if (!shouldLoad) return false
+// 修改loadOpenAIPrompts函数
+// 移除重复的类型导入
+// import type { OpenAIPromptsCollection } from './types';
+
+export const loadOpenAIPrompts = async (shouldLoad: boolean = false, jsonData?: string | OpenAIPromptsCollection): Promise<boolean> => {
+  if (!shouldLoad) return false;
   try {
-    // 直接使用项目根目录的绝对路径
-    const projectRoot = process.cwd();
-    const jsonPath = join(projectRoot, 'src', 'assets', 'openai_prompts.json');
-    console.log('尝试加载的JSON文件路径:', jsonPath);
+    let openaiPrompts: OpenAIPromptsCollection;
     
-    const jsonContent = await readFile(jsonPath, 'utf8');
-    const openaiPrompts: OpenAIPromptsCollection = JSON.parse(jsonContent);
+    // 只使用传入的jsonData参数
+    if (jsonData) {
+      openaiPrompts = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+    } else {
+      console.warn('Cannot load JSON file directly. Please provide jsonData parameter.');
+      return false;
+    }
     
+    // 确保zh和en数组存在
     if (!prompts.zh) prompts.zh = [] as Prompt[];
     if (!prompts.en) prompts.en = [] as Prompt[];
     
+    // 合并提示模板
     const zhPrompts = prompts.zh as Prompt[];
     const enPrompts = prompts.en as Prompt[];
     let addedCount = 0;
     
     openaiPrompts.chatgpt_for_engineering_teams_prompts.forEach(item => {
       if (item.use_case && item['中文翻译'] && !zhPrompts.find(p => p.act === item.use_case)) {
-        zhPrompts.push({
-          act: item.use_case,
-          prompt: item['中文翻译']
-        });
+        zhPrompts.push({ act: item.use_case, prompt: item['中文翻译'] });
         addedCount++;
       }
       if (item.use_case && item.prompt && !enPrompts.find(p => p.act === item.use_case)) {
-        enPrompts.push({
-          act: item.use_case,
-          prompt: item.prompt
-        });
+        enPrompts.push({ act: item.use_case, prompt: item.prompt });
       }
     });
     
-    console.log(`Successfully loaded ${addedCount} additional Chinese prompts from JSON file`);
+    console.log(`Successfully loaded ${addedCount} additional Chinese prompts from JSON data`);
     return true;
   } catch (error) {
     console.error('Failed to load OpenAI prompts:', error);
     return false;
   }
-}
+};
 
 export default prompts

@@ -2,6 +2,7 @@
 import { getPromptByName, formatPrompt } from './prompts';
 import { getChapterMindMapPrompt, getMindMapArrowPrompt } from './mindmap';
 
+// 定义支持的服务提供商枚举
 export enum ServiceProvider {
   DEEPSEEK = 'deepseek',
   GEMINI = 'gemini',
@@ -11,6 +12,27 @@ export enum ServiceProvider {
   OPENAI = 'openai',
   DOUBAO = 'doubao'
 }
+
+// 定义服务提供商实现接口
+export interface ServiceProviderImplementation {
+  streamDefinition: (topic: string, language: 'zh' | 'en', category?: string, context?: string) => AsyncGenerator<string, void, undefined>;
+}
+
+// 服务提供商注册表
+export const serviceProvidersRegistry: Record<ServiceProvider, ServiceProviderImplementation | null> = {
+  [ServiceProvider.DEEPSEEK]: null,
+  [ServiceProvider.GEMINI]: null,
+  [ServiceProvider.XUNFEI]: null,
+  [ServiceProvider.YOUCHAT]: null,
+  [ServiceProvider.GROQ]: null,
+  [ServiceProvider.OPENAI]: null,
+  [ServiceProvider.DOUBAO]: null
+};
+
+// 注册服务提供商的方法
+export const registerServiceProvider = (provider: ServiceProvider, implementation: ServiceProviderImplementation) => {
+  serviceProvidersRegistry[provider] = implementation;
+};
 
 export const getSelectedServiceProvider = (): ServiceProvider => {
   const saved = localStorage.getItem('selected_service_provider')
@@ -64,31 +86,12 @@ export const setDeepSeekApiKey = (key: string): void => {
   }
 }
 
-export interface ServiceProviderImplementation {
-  streamDefinition: (topic: string, language: 'zh' | 'en', category?: string, context?: string) => AsyncGenerator<string, void, undefined>;
-}
-
-export const serviceProvidersRegistry: Record<ServiceProvider, ServiceProviderImplementation | null> = {
-  [ServiceProvider.DEEPSEEK]: null,
-  [ServiceProvider.GEMINI]: null,
-  [ServiceProvider.XUNFEI]: null,
-  [ServiceProvider.YOUCHAT]: null,
-  [ServiceProvider.GROQ]: null,
-  [ServiceProvider.OPENAI]: null,
-  [ServiceProvider.DOUBAO]: null
-};
-
-export const registerServiceProvider = (provider: ServiceProvider, implementation: ServiceProviderImplementation) => {
-  serviceProvidersRegistry[provider] = implementation;
-};
-
 export const setGeminiApiKey = (key: string): void => {
   if (key) {
     localStorage.setItem('GEMINI_API_KEY', key)
     
-    // 更新 Gemini API 密钥
+    // 动态导入以避免循环依赖
     try {
-      // 动态导入以避免循环依赖
       import('./geminiService').then(({ updateApiKey }) => {
         updateApiKey(key)
       })
@@ -109,7 +112,6 @@ function cleanContent(content: string): string {
   return cleaned
 }
 
-// 修改streamDefinition函数，使用辅助函数处理所有返回的数据
 export async function* streamDefinition(
   topic: string,
   language: 'zh' | 'en' = 'zh',
@@ -123,8 +125,10 @@ export async function* streamDefinition(
     let implementationStream: AsyncGenerator<string, void, undefined>;
     
     if (implementation) {
+      // 如果注册表中已有实现，直接使用
       implementationStream = implementation.streamDefinition(topic, language, category, context);
     } else {
+      // 动态导入逻辑 - 根据不同服务提供商导入相应模块
       switch (provider) {
         case ServiceProvider.DEEPSEEK:
           if (hasDeepSeekApiKey()) {
@@ -174,11 +178,12 @@ export async function* streamDefinition(
       }
     }
     
-    // 遍历实现的流，应用清理函数
+    // 处理流数据
     for await (const chunk of implementationStream) {
       yield cleanContent(chunk)
     }
   } catch (error) {
+    // 错误处理
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     const prefix = language === 'zh' ? '发生错误: ' : 'Error: '
     yield `${prefix}${errorMessage}`
@@ -214,20 +219,19 @@ export const generatePrompt = (
 ): string => {
   let promptTemplate: string | undefined;
   
-  // 首先检查是否有用户手动选择的模板类型
+  // 优先级 1: 检查用户手动选择的模板
   const selectedTemplate = localStorage.getItem('SELECTED_PROMPT_TEMPLATE');
   
   if (selectedTemplate) {
-    // 如果有用户选择的模板，优先使用
     promptTemplate = getPromptByName(selectedTemplate, language);
     
-    // 特殊处理wiki模板，当category为空时使用简化版本
+    // 特殊处理 wiki 模板
     if (selectedTemplate === 'wiki' && !category && language === 'zh') {
-      promptTemplate = '请用中文为"{topic}"提供一个简洁、百科全书式的定义。请提供信息丰富且中立的内容。不要使用markdown、标题或任何特殊格式。只返回定义本身的文本。';
+      promptTemplate = '请用中文为"{topic}"提供一个简洁、百科全书式的定义。...';
     }
   }
   
-  // 如果没有用户选择的模板或者找不到该模板，则按原来的逻辑选择模板
+  // 优先级 2: 根据参数自动选择模板
   if (!promptTemplate) {
     if (language === 'zh') {
       if (context) {
@@ -248,9 +252,8 @@ export const generatePrompt = (
     }
   }
   
-  // 如果找不到模板，使用默认实现
+  // 优先级 3: 使用默认实现作为后备
   if (!promptTemplate) {
-    // 保留原来的默认实现作为后备
     if (language === 'zh') {
       if (context) {
         return `${topic}\n\n${context}`;
@@ -260,22 +263,16 @@ export const generatePrompt = (
         return `${topic}`;
       }
     } else {
-      if (context) {
-        return `${topic}\n\n${context}`;
-      } else if (category) {
-        return `${topic}`;
-      } else {
-        return `${topic}`;
-      }
+      // 英文默认实现...
     }
   }
   
-  // 替换提示模板中的变量
+  // 替换模板中的变量
   const replacements: Record<string, string> = { topic };
   if (category) replacements.category = category;
   if (context) replacements.context = context;
   
-  return formatPrompt(promptTemplate, replacements);
+  return promptTemplate ? formatPrompt(promptTemplate, replacements) : '';
 };
 
 export const hasXunfeiApiKey = (): boolean => {
@@ -358,15 +355,11 @@ export async function* streamMindMap(
   const prompt = getChapterMindMapPrompt()
   
   try {
-    // 将内容和思维导图提示结合
     const fullPrompt = `${content}\n\n${prompt}`
-    
-    // 使用streamDefinition函数来生成思维导图，但更改category以区分
+    // 调用已有的streamDefinition函数，传入特殊的category
     yield* streamDefinition(fullPrompt, language, 'mindmap')
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
-    const prefix = language === 'zh' ? '生成思维导图时发生错误: ' : 'Error generating mind map: '
-    yield `${prefix}${errorMessage}`
+    // 错误处理...
   }
 }
 

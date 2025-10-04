@@ -109,12 +109,39 @@ export const loadOpenAIPrompts = async (shouldLoad: boolean = false, jsonData?: 
   try {
     let openaiPrompts: OpenAIPromptsCollection;
     
-    // 只使用传入的jsonData参数
+    // 尝试获取JSON数据的多种方式
     if (jsonData) {
+      // 1. 使用传入的jsonData参数
       openaiPrompts = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
     } else {
-      console.warn('Cannot load JSON file directly. Please provide jsonData parameter.');
-      return false;
+      try {
+        // 2. 尝试从全局变量获取（可在HTML中预先定义）
+        if (typeof window !== 'undefined' && (window as any).__OPENAI_PROMPTS__) {
+          openaiPrompts = (window as any).__OPENAI_PROMPTS__;
+        } else {
+          // 3. 尝试从本地存储获取
+          if (typeof localStorage !== 'undefined') {
+            const storedPrompts = localStorage.getItem('openai_prompts');
+            if (storedPrompts) {
+              openaiPrompts = JSON.parse(storedPrompts);
+            } else {
+              // 4. 使用默认的内联数据
+              openaiPrompts = {
+                chatgpt_for_engineering_teams_prompts: []
+              };
+              console.warn('Using empty default prompts since no data provided and cannot access file system in browser');
+            }
+          } else {
+            openaiPrompts = {
+              chatgpt_for_engineering_teams_prompts: []
+            };
+            console.warn('Cannot load JSON file directly. Please provide jsonData parameter.');
+          }
+        }
+      } catch (err) {
+        console.error('Error loading prompts data:', err);
+        return false;
+      }
     }
     
     // 确保zh和en数组存在
@@ -136,7 +163,7 @@ export const loadOpenAIPrompts = async (shouldLoad: boolean = false, jsonData?: 
       }
     });
     
-    console.log(`Successfully loaded ${addedCount} additional Chinese prompts from JSON data`);
+    console.log(`Successfully loaded ${addedCount} additional Chinese prompts`);
     return true;
   } catch (error) {
     console.error('Failed to load OpenAI prompts:', error);

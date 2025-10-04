@@ -1,6 +1,6 @@
 {
   "name": "@qcgm1978/llm-core",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "Core functionality for LLM service provider",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "core:publish:patch": "sudo china../publish.sh --patch",
+    "core:publish:patch": "sudo ./publish.sh --patch",
     "core:publish:minor": "sudo ./publish.sh --minor",
     "core:publish:major": "./publish.sh --major",
     "core:publish:dry": "./publish.sh --dry-run",

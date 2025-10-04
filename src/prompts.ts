@@ -125,11 +125,32 @@ export const loadOpenAIPrompts = async (shouldLoad: boolean = false, jsonData?: 
             if (storedPrompts) {
               openaiPrompts = JSON.parse(storedPrompts);
             } else {
-              // 4. 使用默认的内联数据
-              openaiPrompts = {
-                chatgpt_for_engineering_teams_prompts: []
-              };
-              console.warn('Using empty default prompts since no data provided and cannot access file system in browser');
+              // 4. 尝试使用fetch API加载本地JSON文件
+              if (typeof window !== 'undefined' && typeof window.fetch !== 'undefined') {
+                try {
+                  const response = await fetch('/assets/openai_prompts.json');
+                  if (!response.ok) throw new Error('Network response was not ok');
+                  openaiPrompts = await response.json();
+                } catch (fetchError) {
+                  // 如果从根路径加载失败，尝试从相对路径加载
+                  try {
+                    const response = await fetch('./assets/openai_prompts.json');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    openaiPrompts = await response.json();
+                  } catch (relativeFetchError) {
+                    // 5. 使用默认的内联数据
+                    openaiPrompts = {
+                      chatgpt_for_engineering_teams_prompts: []
+                    };
+                    console.warn('Using empty default prompts since no data provided and cannot access file system in browser');
+                  }
+                }
+              } else {
+                openaiPrompts = {
+                  chatgpt_for_engineering_teams_prompts: []
+                };
+                console.warn('Cannot load JSON file directly. Please provide jsonData parameter.');
+              }
             }
           } else {
             openaiPrompts = {

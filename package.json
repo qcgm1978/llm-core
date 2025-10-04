@@ -1,6 +1,6 @@
 {
   "name": "@qcgm1978/llm-core",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "Core functionality for LLM service provider",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

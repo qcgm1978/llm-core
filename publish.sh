@@ -129,7 +129,7 @@ if [ "$DRY_RUN" = false ]; then
   echo "${YELLOW}Git 提交和推送...${NC}"
   git add -u
   git commit -m "Bump version to $NEW_VERSION"
-  git push origin HEAD
+  git push origin HEAD --force
   
   # 创建并推送标签
   GIT_TAG="llm-core-v$NEW_VERSION"

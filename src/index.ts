@@ -1,8 +1,10 @@
-// 保留原有导出
+// 保留具名导出
+import * as prompts from './prompts';
+import * as mindmap from './mindmap';
+import * as llmService from './llmService';
+import * as initAllServices from './initAllServices';
+
 export * from './prompts';
 export * from './mindmap';
 export * from './llmService';
 export * from './initAllServices';
-
-// 添加默认导出，包含所有具名导出
-export * as default from './index';
